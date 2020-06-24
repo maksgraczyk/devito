@@ -1,3 +1,9 @@
+import numpy as np
+import pytest
+
+from devito import norm
+from devito.logger import info
+
 from examples.seismic import demo_model, setup_geometry, seismic_args
 from examples.seismic.tti import AnisotropicWaveSolver
 
@@ -16,14 +22,34 @@ def tti_setup(shape=(50, 50, 50), spacing=(20.0, 20.0, 20.0), tn=250.0,
 
 
 def run(shape=(50, 50, 50), spacing=(20.0, 20.0, 20.0), tn=250.0,
-        autotune=False, time_order=2, space_order=4, nbl=10,
-        kernel='centered', **kwargs):
+        autotune=False, time_order=2, space_order=4, full_run=False,
+        nbl=10, kernel='centered', **kwargs):
 
-    solver = tti_setup(shape, spacing, tn, space_order, nbl, **kwargs)
+    solver = tti_setup(shape=shape, spacing=spacing, tn=tn, space_order=space_order,
+                       nbl=nbl, **kwargs)
+    info("Applying Forward")
+    # Whether or not we save the whole time history. We only need the full wavefield
+    # with 'save=True' if we compute the gradient without checkpointing, if we use
+    # checkpointing, PyRevolve will take care of the time history
 
     rec, u, v, summary = solver.forward(autotune=autotune, kernel=kernel)
 
+    if not full_run:
+        return summary.gflopss, summary.oi, summary.timings, [rec, u, v]
+
+    info("Applying Adjoint")
+    solver.adjoint(rec, autotune=autotune)
     return summary.gflopss, summary.oi, summary.timings, [rec, u, v]
+
+
+@pytest.mark.parametrize('kernel', ['centered', 'staggered'])
+@pytest.mark.parametrize('ndim', [2, 3])
+def test_tti_stability(kernel, ndim):
+    shape = tuple([11]*ndim)
+    spacing = tuple([20]*ndim)
+    _, _, _, [rec, _, _] = run(shape=shape, spacing=spacing, kernel=kernel,
+                               tn=16000.0, nbl=0)
+    assert np.isfinite(norm(rec))
 
 
 if __name__ == "__main__":
@@ -45,4 +71,4 @@ if __name__ == "__main__":
 
     run(shape=shape, spacing=spacing, nbl=args.nbl, tn=tn,
         space_order=args.space_order, autotune=args.autotune,
-        opt=args.opt, kernel=kernel, preset=preset)
+        opt=args.opt, full_run=args.full, kernel=kernel, preset=preset)
