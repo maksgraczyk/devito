@@ -1,5 +1,12 @@
 from devito import Function, dimensions, Operator, Eq
 
+# Expected result (R.data):
+# [[ 34. 32. -16. -22. -18.]
+# [ 22. 30.   6.  -9. -28.]
+# [ 21. 12.  12.   4. -33.]
+# [ 37.  7.   7.  -3. -44.]
+# [ 25. 10.  10. -10.  35.]]
+
 
 def run():
     m, n, k, l = dimensions('m n k l')
