@@ -1,5 +1,11 @@
-from devito import *
+from devito import Grid, Function, Operator, dimensions, Eq
 from sympy import Max
+
+# This example uses a 3x3 max pooling function.
+# Expected result (R.data):
+# [[22. 22. 22.]
+#  [15. 15. 15.]
+#  [15. 15. 15.]]
 
 
 def subsampling(kernel_size, feature_map, function, stride=(1, 1)):
