@@ -2,27 +2,38 @@ from devito import *
 from sympy import Max
 
 
-def subsampling(kernel_size, feature_map, function, stride=1):
-    if stride != 1:
-        raise Exception("Stride other than 1 not supported yet")
+def subsampling(kernel_size, feature_map, function, stride=(1, 1)):
+    if feature_map is None or len(feature_map) == 0:
+        raise Exception("Feature map must not be empty")
 
-    gridB = Grid(shape=(len(feature_map), len(feature_map[0])))
-    B = Function(name='B', grid=gridB)
+    if kernel_size is None or len(kernel_size) != 2:
+        raise Exception("Kernel size is incorrect")
 
-    width, height = kernel_size
+    map_height, map_width = len(feature_map), len(feature_map[0])
+    kernel_height, kernel_width = kernel_size
+
+    if (map_height - kernel_height) % stride[0] != 0 or \
+       (map_width - kernel_width) % stride[1] != 0:
+        raise Exception("Stride " + str(stride) + " is not compatible "
+                        "with feature map and kernel sizes")
+
+    gridB = Grid(shape=(map_height, map_width))
+    B = Function(name='B', grid=gridB, space_order=0)
 
     a, b = dimensions('a b')
-    gridR = Grid(shape=(gridB.shape[0] - height + 1,
-                        gridB.shape[1] - width + 1),
+    gridR = Grid(shape=((map_height - kernel_height + stride[0])
+                        // stride[0],
+                        (map_width - kernel_width + stride[1])
+                        // stride[1]),
                  dimensions=(a, b))
-    R = Function(name='R', grid=gridR)
+    R = Function(name='R', grid=gridR, space_order=0)
 
     B.data[:] = feature_map
 
     op = Operator(Eq(R[a, b],
-                     function([B[a + i, b + j]
-                               for i in range(height)
-                               for j in range(width)])))
+                     function([B[stride[0] * a + i, stride[1] * b + j]
+                               for i in range(kernel_height)
+                               for j in range(kernel_width)])))
     op.apply()
 
     return R.data
