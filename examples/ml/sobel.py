@@ -75,7 +75,7 @@ def run(kernel, image):
 
     x, y = B.dimensions
     kernel_rows, kernel_cols = A.shape
-    op = Operator(Eq(R,
+    op = Operator(Eq(R[x, y],
                      sum([A[kernel_rows - i - 1,
                             kernel_cols - j - 1] *
                           B[x - kernel_rows // 2 + i,
