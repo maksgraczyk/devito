@@ -65,9 +65,9 @@ def subsampling(kernel_size, feature_map, function, stride=(1, 1),
                      function([B[stride[0] * a + i, stride[1] * b + j]
                                for i in range(kernel_height)
                                for j in range(kernel_width)])))
-    op.apply()
-
-    return R.data
+    op.cfunction
+    
+    return (op, R.data)
 
 
 if __name__ == "__main__":
