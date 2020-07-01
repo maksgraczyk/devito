@@ -1,5 +1,6 @@
 from devito import Grid, Function, Operator, dimensions, Eq
 from sympy import Max
+import numpy as np
 
 # This example uses a 3x3 max pooling function.
 # Expected result (R.data):
@@ -56,7 +57,9 @@ def subsampling(kernel_size, feature_map, function, stride=(1, 1),
 
     for i in range(padding[0], map_height - padding[0]):
         B.data[i] = \
-            [0] * padding[1] + feature_map[i - padding[0]] + [0] * padding[1]
+            np.concatenate(([0] * padding[1],
+                            feature_map[i - padding[0]],
+                            [0] * padding[1]))
 
     op = Operator(Eq(R[a, b],
                      function([B[stride[0] * a + i, stride[1] * b + j]
