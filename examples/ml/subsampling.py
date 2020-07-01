@@ -66,7 +66,7 @@ def subsampling(kernel_size, feature_map, function, stride=(1, 1),
                                for i in range(kernel_height)
                                for j in range(kernel_width)])))
     op.cfunction
-    
+
     return (op, R.data)
 
 
@@ -77,8 +77,9 @@ if __name__ == "__main__":
                    [15, 15, 15, 15, 15],
                    [5, 5, 10, 10, 5]]
 
-    result = subsampling(kernel_size=(3, 3),
-                         feature_map=feature_map,
-                         function=lambda l: Max(*l))
+    op, result = subsampling(kernel_size=(3, 3),
+                             feature_map=feature_map,
+                             function=lambda l: Max(*l))
+    op.apply()
 
     print(result)
