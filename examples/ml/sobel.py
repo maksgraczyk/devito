@@ -1,4 +1,4 @@
-from devito import Function, Operator, Eq, Grid, dimensions, configuration
+from devito import Function, Operator, Eq, Grid, dimensions
 
 # Expected result (R.data):
 # [[ 34.  32. -16. -22. -18.]
