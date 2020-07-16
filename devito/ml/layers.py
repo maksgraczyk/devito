@@ -176,67 +176,76 @@ class Conv(Layer):
 
 
 class Subsampling(Layer):
-    def __init__(self, kernel_size, feature_map, function,
+    def __init__(self, kernel_size, input_size, function,
+                 name_allocator_func=alloc, dim_allocator_func=dim_alloc,
                  stride=(1, 1), padding=(0, 0), activation=None,
-                 bias=0):
+                 generate_code=True):
         # All sizes are expressed as (batch, channel, rows, columns).
-        #error check to be added later
-        #self._error_check(kernel_size, feature_map, stride, padding)
+        # error check to be added later
+        # self._error_check(kernel_size, feature_map, stride, padding)
 
         self._kernel_size = kernel_size
         self._function = function
         self._activation = activation
-        self._bias = bias
+        # self._bias = bias
 
         self._stride = stride
         self._padding = padding
 
-        super().__init__(input_data=feature_map)
+        super().__init__(kernel_size, input_size, name_allocator_func,
+                         dim_allocator_func, generate_code)
 
 
-    def _allocate(self):
-        map_height = self._input_data.shape[2] + 2 * self._padding[0]
-        map_width = self._input_data.shape[3] + 2 * self._padding[1]
-        kernel_height, kernel_width = self._kernel_size
-        a, b, c, d = dimensions('a b c d')
-        gridB = Grid(shape=(self._input_data.shape[0], self._input_data.shape[1], map_height, map_width),\
-                    dimensions=(a, b, c, d))
+    def _allocate(self, kernel_size, input_size, name_allocator_func,
+                  dim_allocator_func):
+        map_height = input_size[2] + 2 * self._padding[0]
+        map_width = input_size[3] + 2 * self._padding[1]
+        kernel_height, kernel_width = kernel_size
+        
+        a, b, c, d = dim_allocator_func(4)
+        gridB = Grid(shape=(input_size[0], input_size[1], map_height, map_width),
+                     dimensions=(a, b, c, d))
         B = Function(name='B', grid=gridB, space_order=0)
 
-        e, f, g, h = dimensions('e f g h')
-        gridR = Grid(shape=( self._input_data.shape[0],  self._input_data.shape[1],\
+        e, f, g, h = dim_allocator_func(4)
+        gridR = Grid(shape=(input_size[0], input_size[1],
                             (map_height - kernel_height + self._stride[0])
                             // self._stride[0],
                             (map_width - kernel_width + self._stride[1])
                             // self._stride[1]),
                      dimensions=(e, f, g, h))
-        print(gridR)
+
         R = Function(name='R', grid=gridR, space_order=0)
-        #add padding to start and end of each row
-        for image in range(self._input_data.shape[0]):
-            for channel in range(self._input_data.shape[1]):
+        return (None, B, R)
+    
+    def execute(self, input_data, bias):
+        map_height = input_data.shape[2]
+        # add padding to start and end of each row
+        for image in range(input_data.shape[0]):
+            for channel in range(input_data.shape[1]):
                 for i in range(self._padding[0], map_height - self._padding[0]):
-                    B.data[image, channel, i] = \
+                    self._I.data[image, channel, i] = \
                         np.concatenate(([0] * self._padding[1],
-                                        self._input_data[image, channel, i - self._padding[0]],
+                                        input_data[image, channel, i - self._padding[0]],
                                         [0] * self._padding[1]))
+        return super().execute()
 
-        self._B = B
-        return R
+    def equations(self, input_function=None):
+        if input_function is None:
+            input_function = self._I
 
-    def equations(self):
-        a, b, c, d = self._B.dimensions
+        a, b, c, d = input_function.dimensions
         kernel_height, kernel_width = self._kernel_size
-        images = self._input_data.shape[0]
-        channels = self._input_data.shape[1]
+        images = input_function.shape[0]
+        channels = input_function.shape[1]
         equation_sum = []
         for image in range(images):
             for channel in range(channels):
-                rhs = self._function([self._B[image,channel, self._stride[0] * c + i,
-                                          self._stride[1] * d + j]
-                                  for i in range(kernel_height)
-                                  for j in range(kernel_width)])
-                equation_sum.append(Eq(self._R[image,channel, c, d], rhs))
+                rhs = self._function([self._B[image, channel, self._stride[0] * c + i,
+                                              self._stride[1] * d + j]
+                                      for i in range(kernel_height)
+                                      for j in range(kernel_width)])
+                equation_sum.append(Eq(self._R[image, channel, c, d], rhs))
             #equation_sum.append(Eq(self._R[image,0,channel, b, c], rhs))
         if self._activation is not None:
             rhs = self._activation(rhs)
