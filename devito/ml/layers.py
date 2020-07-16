@@ -241,8 +241,8 @@ class Subsampling(Layer):
         equation_sum = []
         for image in range(images):
             for channel in range(channels):
-                rhs = self._function([self._B[image, channel, self._stride[0] * c + i,
-                                              self._stride[1] * d + j]
+                rhs = self._function([input_function[image, channel, self._stride[0] * c + i,
+                                                     self._stride[1] * d + j]
                                       for i in range(kernel_height)
                                       for j in range(kernel_width)])
                 equation_sum.append(Eq(self._R[image, channel, c, d], rhs))
