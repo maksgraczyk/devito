@@ -64,16 +64,18 @@ def run(shape=(50, 50, 50), spacing=(20.0, 20.0, 20.0), tn=1000.0,
 
 
 @pytest.mark.parametrize('ndim', [1, 2, 3])
-def test_isoacoustic_stability(ndim):
+@pytest.mark.parametrize('k', ['OT2', 'OT4'])
+def test_isoacoustic_stability(ndim, k):
     shape = tuple([11]*ndim)
     spacing = tuple([20]*ndim)
-    _, _, _, [rec, _] = run(shape=shape, spacing=spacing, tn=20000.0, nbl=0)
+    _, _, _, [rec, _] = run(shape=shape, spacing=spacing, tn=20000.0, nbl=0, kernel=k)
     assert np.isfinite(norm(rec))
 
 
-@pytest.mark.parametrize('fs, normrec', [(True, 369.955), (False, 459.1678)])
-def test_isoacoustic(fs, normrec):
-    _, _, _, [rec, _] = run(fs=fs)
+@pytest.mark.parametrize('fs, normrec, dtype', [(True, 369.955, np.float32),
+                                                (False, 459.1678, np.float64)])
+def test_isoacoustic(fs, normrec, dtype):
+    _, _, _, [rec, _] = run(fs=fs, dtype=dtype)
     assert np.isclose(norm(rec), normrec, rtol=1e-3, atol=0)
 
 
@@ -82,6 +84,9 @@ if __name__ == "__main__":
     parser = seismic_args(description)
     parser.add_argument('--fs', dest='fs', default=False, action='store_true',
                         help="Whether or not to use a freesurface")
+    parser.add_argument("-k", dest="kernel", default='OT2',
+                        choices=['OT2', 'OT4'],
+                        help="Choice of finite-difference kernel")
     args = parser.parse_args()
 
     # 3D preset parameters
@@ -94,4 +99,4 @@ if __name__ == "__main__":
     run(shape=shape, spacing=spacing, nbl=args.nbl, tn=tn, fs=args.fs,
         space_order=args.space_order, preset=preset, kernel=args.kernel,
         autotune=args.autotune, opt=args.opt, full_run=args.full,
-        checkpointing=args.checkpointing)
+        checkpointing=args.checkpointing, dtype=args.dtype)

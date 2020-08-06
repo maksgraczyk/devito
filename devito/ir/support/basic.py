@@ -696,19 +696,19 @@ class Scope(object):
             if not e.is_Increment and e.is_scalar:
                 self.initialized.add(e.lhs.function)
 
-        # The iterators symbols too
+            # Look up ConditionalDimensions
+            for v in e.conditionals.values():
+                for j in retrieve_terminals(v):
+                    v = self.reads.setdefault(j.function, [])
+                    v.append(TimedAccess(j, 'R', -1, e.ispace))
+
+        # The iteration symbols too
         dimensions = set().union(*[e.dimensions for e in exprs])
         for d in dimensions:
-            for j in d.symbolic_size.free_symbols:
-                v = self.reads.setdefault(j.function, [])
-                v.append(TimedAccess(j, 'R', -1))
-
-        # Factor in conditionals
-        conditionals = set().union(*[e.conditionals for e in exprs])
-        for d in conditionals:
-            for j in d.free_symbols:
-                v = self.reads.setdefault(j.function, [])
-                v.append(TimedAccess(j, 'R', -1))
+            for i in d._defines_symbols:
+                for j in i.free_symbols:
+                    v = self.reads.setdefault(j.function, [])
+                    v.append(TimedAccess(j, 'R', -1))
 
         # A set of rules to drive the collection of dependencies
         self.rules = as_tuple(rules)
